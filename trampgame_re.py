@@ -1,5 +1,6 @@
 import random
 
+
 class Card:
     RANKS = ["A", "K", "Q", "J", "10", "9", "8", "7", "6", "5", "4", "3", "2"]
     SUITS = ["♥", "♦", "♠", "♣"]
@@ -7,129 +8,126 @@ class Card:
     def __init__(self, rank, suit):
         self.rank = rank
         self.suit = suit
-    
-    #カードの強さの取得
-    @staticmethod
-    def get_strength(card):
-        return Card.RANKS.index(card[1:])
+
+    # カードの強さの取得
+    @property
+    def strength(self):
+        return Card.RANKS.index(self.rank)
+
+    def __str__(self):
+        return f"{self.suit}{self.rank}"
+
 
 class Deck:
-    #山札の初期化
+    # 山札の初期化
     def __init__(self):
         self.cards = []
         for rank in Card.RANKS:
             for suit in Card.SUITS:
-                self.cards.append(suit + rank)
+                self.cards.append(Card(rank, suit))
 
-    #山札のシャッフル
+    # 山札のシャッフル
     def shuffle_card(self):
         random.shuffle(self.cards)
 
-    def draw(self):
-        return self.cards.pop()
-
-class Players:
-    def __init__(self,num):
-        self.num = num
-        self.input_names = []
-
-    #入力された名前をリスト化
-    def  names(self):
-        for i in range(self.num):
-            self.input_names.append(str(input(f"プレイヤー{i+1}の名前を入力してください:")))
-        return self.input_names
-        
-    #プレイヤーの手札を二次元リストで管理
-    def player_hand(self,cards):
-        hands = [[] for _ in range(self.num)]
-        
+    def deal(self, players):
+        num_players = len(players)
         player_index = 0
-        while len(cards) > 0:
-            hands[player_index].append(cards.pop())
-            player_index = (player_index + 1) % self.num
-        
-        return hands
+        while len(self.cards) > 0:
+            card = self.cards.pop()
+            players[player_index].hand.append(card)
+            player_index = (player_index + 1) % num_players
+
+
+class Player:
+    def __init__(self, name):
+        self.name = name
+        self.hand = []
+
 
 class GameFlow:
     def __init__(self):
         self.pool = []
 
-    #勝敗(引き分け)判定
-    def who_win(self,field):
-        strength = list(map(lambda x : Card.get_strength(x), field))
-        best = min(strength)
+    # 勝敗(引き分け)判定
+    def who_win(self, field):
+        strengths = [card.strength for card in field]
+        best = min(strengths)
 
-        if strength.count(best) > 1:
+        if strengths.count(best) > 1:
             return "draw"
-        
-        else:
-            return strength.index(best)
 
-    #一回の勝負
-    def turn(self,num,hands,names):
+        else:
+            return strengths.index(best)
+
+    # 一回の勝負
+    def turn(self, players):
         print("戦争!")
         field = []
 
-        for i in range(num):
-            card = hands[i].pop(0)
-            suit = card[0]
-            rank = card[1:]
-            print(f"{names[i]}のカードは{suit}の{rank}です。")
+        for player in players:
+            card = player.hand.pop(0)
+            print(f"{player.name}のカードは{card.suit}の{card.rank}です。")
             field.append(card)
-        
+
         self.pool.extend(field)
-        winner = self.who_win(field)
+        winner_id = self.who_win(field)
 
-        if winner == "draw":
+        if winner_id == "draw":
             print("引き分けです")
-
         else:
-            hands[winner].extend(self.pool)
-            print(f"プレイヤー{winner + 1}が勝ちました。プレイヤー{winner + 1}はカードを{len(self.pool)}枚もらいました。")
+            random.shuffle(self.pool)
+            winner = players[winner_id]
+            winner.hand.extend(self.pool)
+            print(f"プレイヤー{winner.name}が勝ちました。\
+プレイヤー{winner.name}はカードを{len(self.pool)}枚もらいました。")
             self.pool = []
-    
-    #最終結果
-    def result(self,num,hands,names):
+
+    # 最終結果
+    def result(self, players):
         ranking = []
 
-        for i in range(num):
-            count = len(hands[i])
-            ranking.append([count,i])
-            print(f"{names[i]}の手札の枚数は{count}枚です。", end ="")
+        for player in players:
+            count = len(player.hand)
+            ranking.append([count, player.name])
+            print(f"{player.name}の手札の枚数は{count}枚です。", end="")
 
         print("")
 
-        ranking.sort(reverse=True)
-        for rank, (count, player_index) in enumerate(ranking, 1):
-            print(f"{names[player_index]}は{rank}位です。", end="")
+        ranking.sort(key=lambda x: x[0], reverse=True)
+        for rank, (count, name) in enumerate(ranking, 1):
+            print(f"{name}は{rank}位です。", end="")
 
 
 def main():
-    #プレイヤーの人数と名前の初期化
+    # プレイヤーの人数と名前の初期化
     num = int(input("プレイヤーの人数を入力してください (2~5) :"))
-    players = Players(num)
-    names = players.names()
 
-    #山札の初期化
+    players = []
+    for i in range(num):
+        name = input(f"プレイヤー{i+1}の名前を入力してください:")
+        players.append(Player(name))
+
+    # 山札の初期化
     deck = Deck()
     deck.shuffle_card()
 
-    #プレイヤーの手の初期化
-    hands = players.player_hand(deck.cards)
+    # プレイヤーの手の初期化
+    deck.deal(players)
 
-    #ゲーム開始
+    # ゲーム開始
     game = GameFlow()
     print("戦争を開始します。")
     print("カードが配られました。")
 
-    #誰かの手札がなくなるまでターンを続ける
-    while all(len(h) > 0 for h in hands):
-        game.turn(num, hands,names)
+    # 誰かの手札がなくなるまでターンを続ける
+    while all(len(h.hand) > 0 for h in players):
+        game.turn(players)
 
-    #結果の表示
-    game.result(num,hands,names)
+    # 結果の表示
+    game.result(players)
     print("\n戦争を終了します。")
 
-if __name__ == "__main__":  
+
+if __name__ == "__main__":
     main()
-        
