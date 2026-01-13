@@ -2,7 +2,7 @@ import random
 
 
 class Card:
-    RANKS = ["A", "K", "Q", "J", "10", "9", "8", "7", "6", "5", "4", "3", "2"]
+    RANKS = ["JOKER","A", "K", "Q", "J", "10", "9", "8", "7", "6", "5", "4", "3", "2"]
     SUITS = ["♥", "♦", "♠", "♣"]
 
     def __init__(self, rank, suit):
@@ -23,8 +23,11 @@ class Deck:
     def __init__(self):
         self.cards = []
         for rank in Card.RANKS:
-            for suit in Card.SUITS:
-                self.cards.append(Card(rank, suit))
+            if rank != "JOKER":
+                for suit in Card.SUITS:
+                    self.cards.append(Card(rank, suit))
+            else:
+                self.cards.append(Card(rank,""))
 
     # 山札のシャッフル
     def shuffle_card(self):
@@ -55,6 +58,9 @@ class GameFlow:
         best = min(strengths)
 
         if strengths.count(best) > 1:
+            for card in field:
+                if card.rank == "A" and card.suit == "♠":
+                    return field.index(card)
             return "draw"
 
         else:
